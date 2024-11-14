@@ -1,0 +1,24 @@
+# Bot Settings:
+BOT:
+  TOKEN: "token"
+  STATUS: ["status 1", "status 2"]
+  VERSION: "B1.0"
+  GUILDS: [0000000000000000000]
+  OWNER: [0000000000000000000]
+  EMOJI_GUILD: [0000000000000000000]
+
+# discord Settings:
+EMBED:
+  COLOR: 0x2b2d31
+  FOOTER: "YassiCorp Bot  v{BOT_VERSION} - YassiGame"
+
+# redis Settings:
+REDIS:
+  IP: "localhost"
+  PASSWORD: none
+  PORT: 6379
+
+# Uptime Settings:
+UPTIME_PUSH:
+  ACTIVATE: false
+  URL: "http://localhost/api/push"
