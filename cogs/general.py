@@ -174,7 +174,7 @@ class General(commands.Cog, name="general"):
 
         :param ctx: Le contexte de la commande.
         """
-        ping = round(self.bot.latency * 1000)/0
+        ping = round(self.bot.latency * 1000)
 
         gifs = [
             "https://media.tenor.com/0zPtv37IWy8AAAAS/cats-ping-pong.gif",
