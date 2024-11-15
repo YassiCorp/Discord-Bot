@@ -15,7 +15,7 @@ EMBED:
 # redis Settings:
 REDIS:
   IP: "localhost"
-  PASSWORD: none
+  PASSWORD: null
   PORT: 6379
 
 # Uptime Settings:
