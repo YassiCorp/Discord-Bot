@@ -1,3 +1,4 @@
+import json
 import platform
 import random
 from datetime import datetime
@@ -13,6 +14,7 @@ from emojis import emoji
 from libs import utils
 from libs.embed import ModernEmbed, ErrorEmbed
 from libs.message import default_page_buttons
+from libs.redis_server import redisServer
 from libs.utils import TripleUrlButton, DoubleUrlButton, mediawiki_to_discord
 
 guilds = config.BOT.GUILDS
@@ -37,8 +39,7 @@ class General(commands.Cog, name="general"):
     def __init__(self, bot) -> None:
         self.bot = bot
         self.wiki = MediaWiki(lang="fr")
-
-        self.temp_ping_user = {}
+        self.redis_cache = redisServer
 
     # Message ctx menu command
     @discord.message_command()
@@ -170,29 +171,37 @@ class General(commands.Cog, name="general"):
     )
     async def ping(self, ctx: discord.ApplicationContext) -> None:
         """
-        Check if the bot is alive.
+        Vérifie si le bot est en ligne.
 
-        :param ctx: The hybrid command ctx.
+        :param ctx: Le contexte de la commande.
         """
         ping = round(self.bot.latency * 1000)
 
-        gifs = ["https://media.tenor.com/0zPtv37IWy8AAAAS/cats-ping-pong.gif",
-                "https://media1.tenor.com/m/7TXsIVm7G6QAAAAC/ping-pong.gif",
-                "https://media.tenor.com/OtI0T4RCUM0AAAAd/pingpong-table-tennis.gif",
-                "https://media1.tenor.com/m/oOVpa7dE5osAAAAC/table-tennis-ping-pong.gif",
-                "https://media.tenor.com/g44lccSjD6sAAAAS/jesse-and.gif"]
+        gifs = [
+            "https://media.tenor.com/0zPtv37IWy8AAAAS/cats-ping-pong.gif",
+            "https://media1.tenor.com/m/7TXsIVm7G6QAAAAC/ping-pong.gif",
+            "https://media.tenor.com/OtI0T4RCUM0AAAAd/pingpong-table-tennis.gif",
+            "https://media1.tenor.com/m/oOVpa7dE5osAAAAC/table-tennis-ping-pong.gif",
+            "https://media.tenor.com/g44lccSjD6sAAAAS/jesse-and.gif"
+        ]
 
         user_id = ctx.user.id
-        now = datetime.utcnow()
-        user_data = self.temp_ping_user.get(user_id, {'count': 0, 'last_ping': now})
 
-        # Réinitialiser le compteur si plus de 60 secondes se sont écoulées
-        if (now - user_data['last_ping']).total_seconds() > 60:
-            user_data['count'] = 0
+        # Récupérer les données de l'utilisateur depuis Redis
+        data = self.redis_cache.get(f"ping_user:{user_id}")
+        if data is None:
+            # Si aucune donnée n'existe, initialiser le compteur à 1
+            user_data = {'count': 1}
+        else:
+            user_data = json.loads(data)
+            user_data['count'] += 1
 
-        user_data['count'] += 1
-        user_data['last_ping'] = now
-        self.temp_ping_user[user_id] = user_data
+        # Enregistrer les données mises à jour dans Redis avec une expiration de 60 secondes
+        self.redis_cache.set(
+            f"ping_user:{user_id}",
+            json.dumps(user_data),
+            ex=60*2  # Le compteur sera réinitialisé après 60 secondes d'inactivité
+        )
 
         condition = user_data['count'] >= 5
         ping_funfacts = [
@@ -206,8 +215,10 @@ class General(commands.Cog, name="general"):
 
         embed = ModernEmbed(
             title="Ping ~~Pong~~",
-            description=f"> {emoji.discord_mention} {ctx.user.mention} mon ping est de **{ping}ms** {utils.emoji_latency(ping)}"
-                        f"\n\n{f'-# {random.choice(ping_funfacts)}' if condition else ''}",
+            description=(
+                f"> {emoji.discord_mention} {ctx.user.mention} mon ping est de **{ping}ms** {utils.emoji_latency(ping)}"
+                f"\n\n{f'-# {random.choice(ping_funfacts)}' if condition else ''}"
+            ),
         )
         embed.set_thumbnail(url=random.choice(gifs))
         await ctx.respond(embed=embed)

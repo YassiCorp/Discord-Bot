@@ -12,13 +12,13 @@ from config import config
 from emojis import emoji
 from libs.embed import ModernEmbed, LoadingEmbed, ErrorEmbed
 from libs.message import send_with_delete_button, send_timeout_msg, default_page_buttons, buttonGoto
-from libs.redis_server import RedisServer
+from libs.redis_server import redisServer
 from libs.utils import ClassicUrlButton
 
 CACHE_DURATION = 3600
 
 guilds = config.BOT.GUILDS
-redis_cache = RedisServer()
+redis_cache = redisServer
 
 class MyView(discord.ui.View):
     def __init__(self, page: discord.ext.pages.pagination.Paginator, options: list[discord.SelectOption]):
@@ -123,7 +123,7 @@ async def get_template_list():
 
     # Met à jour le cache Redis avec les nouvelles données et le timestamp actuel
     templates = (ids, names)
-    await redis_cache.set("meme-templates", json.dumps(templates))
+    await redis_cache.set("meme-templates", json.dumps(templates), ex=CACHE_DURATION)
 
     return ids, names
 
