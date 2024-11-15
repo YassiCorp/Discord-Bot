@@ -1,9 +1,10 @@
-import discord
 from binance.spot import Spot
 from discord.ext import commands
 
 from emojis import emoji
 from libs.embed import LoadingEmbed, ModernEmbed
+
+import discord
 
 client = Spot()
 

@@ -1,11 +1,10 @@
 import discord, aiohttp, random, platform, os
-from discord import Interaction
 from discord.ext import tasks, commands
-from discord.ext.commands import Context
 from rich.panel import Panel
 from rich.text import Text
 
 import emojis
+import exceptions
 from config import config
 from libs import logger
 from libs.embed import ErrorEmbed
@@ -99,6 +98,64 @@ class BOT(commands.Bot):
             log.info(
                 f"Executed {executed_command} command by {interaction.user} (ID: {interaction.user.id}) in DMs"
             )
+
+    async def on_application_command_error(self, context: discord.ApplicationContext, error) -> None:
+        """
+        Le code de cet événement est exécuté chaque fois qu'une commande valide rencontre une erreur.
+
+        :param context: Le contexte de la commande normale qui a échoué.
+        :param error: L'erreur rencontrée.
+        """
+        if isinstance(error, commands.CommandOnCooldown):
+            minutes, seconds = divmod(error.retry_after, 60)
+            hours, minutes = divmod(minutes, 60)
+            hours = hours % 24
+            embed = ErrorEmbed(
+                title="Cooldown...",
+                description=f"**Veuillez ralentir** - Vous pourrez utiliser cette commande à nouveau dans {f'{round(hours)} heures' if round(hours) > 0 else ''} {f'{round(minutes)} minutes' if round(minutes) > 0 else ''} {f'{round(seconds)} secondes' if round(seconds) > 0 else ''}."
+            )
+            await context.respond(embed=embed)
+        elif isinstance(error, commands.NotOwner) or isinstance(error, exceptions.UserNotOwner):
+            embed = ErrorEmbed(
+                title="Commande securise",
+                description="Vous n'êtes pas le propriétaire du bot !", color=0xE02B2B
+            )
+            await context.respond(embed=embed)
+            if context.guild:
+                log.warning(
+                    f"{context.author} (ID : {context.author.id}) a essayé d'exécuter une commande réservée au propriétaire dans le serveur {context.guild.name} (ID : {context.guild.id}), mais l'utilisateur n'est pas le propriétaire du bot."
+                )
+            else:
+                log.warning(
+                    f"{context.author} (ID : {context.author.id}) a essayé d'exécuter une commande réservée au propriétaire dans les DM du bot, mais l'utilisateur n'est pas le propriétaire du bot."
+                )
+        elif isinstance(error, commands.MissingPermissions):
+            embed = ErrorEmbed(
+                title="Manque de permissions !",
+                description="Vous n'avez pas la/les permission(s) `"
+                            + ", ".join(error.missing_permissions)
+                            + "` pour exécuter cette commande !",
+            )
+            await context.respond(embed=embed)
+        elif isinstance(error, commands.BotMissingPermissions):
+            embed = ErrorEmbed(
+                title="Manque de permissions !",
+                description="Il me manque la/les permission(s) `"
+                            + ", ".join(error.missing_permissions)
+                            + "` pour exécuter complètement cette commande !",
+            )
+            await context.respond(embed=embed)
+        elif isinstance(error, commands.MissingRequiredArgument):
+            embed = ErrorEmbed(
+                title="Manque d'arguments !",
+                # Nous devons capitaliser car les arguments des commandes ne contiennent pas de majuscules dans le code et sont le premier mot du message d'erreur.
+                description=str(error).capitalize(),
+            )
+            await context.respond(embed=embed)
+        else:
+            embed = ErrorEmbed(title=f"{self.emoji.get('Python')} Python Inconnu", description=error, code_style=True)
+            await context.respond(embed=embed)
+            log.error(error)
 
     async def load_cog(self, path: str) -> int:
         errorInt = 0

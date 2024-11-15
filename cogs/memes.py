@@ -1,19 +1,19 @@
-import io
-import json
-import random
-import time
-import aiohttp
-import discord
 from PIL import Image, ImageDraw
 from discord.ext import commands, pages
 from discord.ext.pages import Page
 
-from config import config
-from emojis import emoji
 from libs.embed import ModernEmbed, LoadingEmbed, ErrorEmbed
 from libs.message import send_with_delete_button, send_timeout_msg, default_page_buttons, buttonGoto
 from libs.redis_server import redisServer
 from libs.utils import ClassicUrlButton
+from config import config
+from emojis import emoji
+
+import io
+import json
+import random
+import aiohttp
+import discord
 
 CACHE_DURATION = 3600
 

@@ -1,13 +1,12 @@
 import json
 import platform
 import random
-from datetime import datetime
+import discord
 
 from discord.ext.pages import Page
 from mediawiki import MediaWiki
 
 from config import config
-import discord
 from discord.ext import commands, pages
 
 from emojis import emoji
@@ -175,7 +174,7 @@ class General(commands.Cog, name="general"):
 
         :param ctx: Le contexte de la commande.
         """
-        ping = round(self.bot.latency * 1000)
+        ping = round(self.bot.latency * 1000)/0
 
         gifs = [
             "https://media.tenor.com/0zPtv37IWy8AAAAS/cats-ping-pong.gif",

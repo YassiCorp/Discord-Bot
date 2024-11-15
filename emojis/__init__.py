@@ -1,8 +1,5 @@
 import os
-
-import discord
 import yaml
-from discord.ext import commands
 
 path = "emojis/emojis.yaml"
 

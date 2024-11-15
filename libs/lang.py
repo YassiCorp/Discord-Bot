@@ -1,10 +1,9 @@
 
 from databases.language import db_lib
 from emojis import emoji as emojis
+from libs.embed import Icon
 from libs.path import PATH_LANGUAGE
 import discord, os, yaml, re
-
-from libs.utils import Icon
 
 db_lib = db_lib.LanguageDB()
 def getLanguagePath(lang_id: str) -> str:

@@ -1,13 +1,8 @@
-import asyncio
-import io
-import os
-import random
-import re
-
-import PIL
-import aiofiles
-import aiohttp
+import aiofiles, aiohttp, asyncio
+import io, os, re, PIL
 import discord
+import random
+
 from PIL import Image, ImageDraw
 from discord import HTTPException, NotFound
 from discord.ext import commands

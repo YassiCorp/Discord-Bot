@@ -1,7 +1,7 @@
-import discord
-from discord.ext import commands, pages
 from discord import Interaction, Member, Embed, File, Message, HTTPException, NotFound, MISSING
+from discord.ext import commands, pages
 from typing import Optional, Union
+import discord
 
 from emojis import emoji
 from libs.embed import ModernEmbed, ErrorEmbed

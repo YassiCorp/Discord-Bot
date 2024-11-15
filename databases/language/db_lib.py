@@ -1,10 +1,8 @@
-import asyncio
-
 from sqlalchemy import create_engine, Column, String, Integer, TIMESTAMP
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker
-from libs import path
 from libs.file_api import create_file
+from libs import path
 
 databasePath = f"{path.PATH_DB}/database.db"
 Base = declarative_base()

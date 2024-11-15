@@ -1,7 +1,7 @@
 from datetime import datetime
-from enum import Enum
-from typing import Union
 from config import config
+from typing import Union
+from enum import Enum
 import discord
 
 from emojis import emoji

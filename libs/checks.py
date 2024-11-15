@@ -1,7 +1,4 @@
 from typing import TypeVar, Callable
-
-import discord
-from discord import Interaction
 from discord.ext.commands import check, Context
 
 from exceptions import *

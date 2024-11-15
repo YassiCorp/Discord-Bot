@@ -1,10 +1,11 @@
-import os
 from datetime import datetime
 
 from rich import pretty, traceback
 from rich.console import Console
 from rich.theme import Theme
 from libs.path import PATH_LOGS
+
+import os
 
 pretty.install()
 traceback.install()

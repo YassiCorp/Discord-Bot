@@ -1,9 +1,7 @@
 from discord.ext import commands
-
-import discord
-
-from config import config
 from databases.language import LanguageDB
+from config import config
+import discord
 
 guilds = config.BOT.GUILDS
 

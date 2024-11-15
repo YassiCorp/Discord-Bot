@@ -1,5 +1,4 @@
 from libs import logger
-from enum import Enum
 import yaml
 
 path = "config/config.yaml"

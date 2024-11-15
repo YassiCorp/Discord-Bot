@@ -1,10 +1,8 @@
-import re
-from datetime import datetime
-import discord
 from discord.ext.pages import Paginator
 
 from config import config
 from emojis import emoji
+import discord, re
 
 EMBED_COLOR = config.EMBED.COLOR
 

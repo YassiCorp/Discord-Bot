@@ -1,5 +1,4 @@
-import os
-import re
+import os, re
 
 def create_file(file_path: str) -> None:
     """Create a file if it does not exist."""
