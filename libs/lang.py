@@ -3,7 +3,7 @@ from databases.language import db_lib
 from emojis import emoji as emojis
 from libs.embed import Icon
 from libs.path import PATH_LANGUAGE
-import discord, os, yaml, re
+import nextcord, os, yaml, re
 
 db_lib = db_lib.LanguageDB()
 def getLanguagePath(lang_id: str) -> str:
@@ -21,7 +21,7 @@ def getLanguagePath(lang_id: str) -> str:
 
     return dictVar[lang_id]
 
-def getDefaultLanguage(guild: discord.Guild = None, user: discord.User = None) -> str:
+def getDefaultLanguage(guild: nextcord.Guild = None, user: nextcord.User = None) -> str:
     if user is not None:
         if db_lib.has_default_language_user(user_id=user.id):
             return db_lib.get_default_language_user(user_id=user.id)
@@ -33,7 +33,7 @@ def getDefaultLanguage(guild: discord.Guild = None, user: discord.User = None) -
     return "fr"
 
 class language():
-    def __init__(self, lang_id: str = "fr", user: discord.User = None, guild: discord.Guild = None):
+    def __init__(self, lang_id: str = "fr", user: nextcord.User = None, guild: nextcord.Guild = None):
         self.user = user
         self.guild = guild
         self.lang_id = lang_id
@@ -65,7 +65,7 @@ class language():
             variable = variable.replace("{guild_description}", self.guild.description)
 
         for emoji in re.findall(r'{emoji.\w*}', variable):
-            emoji_name = emoji.split('.')[1].replace('}', '')
+            emoji_name = emoji.get('split')('.')[1].replace('}', '')
             variable = variable.replace(emoji, emojis.get(emoji_name))
 
         variable = variable.replace("{icon}", f"{Icon()}")

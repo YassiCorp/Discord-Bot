@@ -1,76 +1,45 @@
-from discord import Interaction, Member, Embed, File, Message, HTTPException, NotFound, MISSING
-from discord.ext import commands, pages
-from typing import Optional, Union
-import discord
+from typing import Optional, Union, List, Tuple
+from nextcord import (
+    Interaction,
+    Member,
+    Embed,
+    File,
+    Message,
+    HTTPException,
+    NotFound,
+    ButtonStyle,
+)
+from nextcord.ext import commands
+import nextcord
+from nextcord.ui import View
 
 from emojis import emoji
+from libs import logger
 from libs.embed import ModernEmbed, ErrorEmbed
 
-error_text = f"{emoji.discord_support} · Tu n'es pas l'utilisateur qui a exécuté cette commande."
+log = logger.ConsoleLogger(log_name="libs/message", log_color="pink")
 
-default_page_buttons = [
-            pages.PaginatorButton("first", emoji=emoji.get("pixel_symbol_quote_left"), style=discord.ButtonStyle.blurple),
-            pages.PaginatorButton("prev", emoji=emoji.get("pixel_hand_point_left"), style=discord.ButtonStyle.blurple),
-            pages.PaginatorButton(
-                "page_indicator", style=discord.ButtonStyle.gray, disabled=True
-            ),
-            pages.PaginatorButton("next", emoji=emoji.get("pixel_hand_point_right"), style=discord.ButtonStyle.blurple),
-            pages.PaginatorButton("last", emoji=emoji.get("pixel_symbol_quote_right"), style=discord.ButtonStyle.blurple),
-        ]
+# Texte d'erreur global
+error_text = f"{emoji.get('discord_support')} · Tu n'es pas l'utilisateur qui a exécuté cette commande."
 
-class buttonGoto(discord.ui.View):
-    def __init__(self, max_pages: int, page: discord.ext.pages.pagination.Paginator):
-        super().__init__()
-        self.max_pages = max_pages
-        self.page = page
-
-    @discord.ui.button(label="Aller a la page", emoji=emoji.discord_guide)
-    async def button_callback(self, button, interaction):
-        await interaction.response.send_modal(buttonGoto_Modal(max_pages=self.max_pages, page=self.page))
-
-class buttonGoto_Modal(discord.ui.Modal):
-    def __init__(self, max_pages: int, page: discord.ext.pages.pagination.Paginator):
-        super().__init__(timeout=5*60, title="Choisis le numero de la page")
-        self.max_pages = max_pages
-        self.page = page
-
-        self.input_text = discord.ui.InputText(
-            label="Choisis la page que tu veux consulter",
-            style=discord.InputTextStyle.short,
-            placeholder=f"[Chiffres] (min: 1, max: {max_pages})",
-            required=True,
-        )
-        self.add_item(self.input_text)
-
-    async def callback(self, interaction: Interaction):
-        if not self.input_text.value.isdigit() or not 1 <= int(self.input_text.value) <= self.max_pages:
-            embed = ErrorEmbed(title="Goto Page",
-                               description="La page indique n'existe pas !"
-                                           f"\n\n> Veuillez entrer une valeur entre **`1`** et **`{self.max_pages}`**")
-
-            await interaction.respond(embed=embed, ephemeral=True)
-            return
-
-        await self.page.goto_page(page_number=int(self.input_text.value)-1)
-        await interaction.response.defer()
-
-class DeleteMessageView(discord.ui.View):
+# Classe de vue pour le bouton de suppression de message
+class DeleteMessageView(View):
     def __init__(self, user: Member, timeout: int = 180):
         super().__init__(timeout=timeout)
         self.user = user
-        self.message: Optional[Message] = None
 
-    @discord.ui.button(
+    @nextcord.ui.button(
         label="Supprimer",
-        emoji=f"{emoji.discord_trashcan}",
-        style=discord.ButtonStyle.secondary,
-        custom_id="delete"
+        emoji=f"{emoji.get('discord_trashcan')}",
+        style=ButtonStyle.secondary,
+        custom_id="delete",
     )
-    async def delete_button(self, button: discord.ui.Button, interaction: Interaction):
+    async def delete_button(self, button: nextcord.ui.Button, interaction: Interaction):
         try:
-            await self.message.delete()
+            await interaction.message.delete()
         except (HTTPException, NotFound):
             pass
+        await interaction.response.defer()
 
     async def interaction_check(self, interaction: Interaction) -> bool:
         if interaction.user.id == self.user.id or interaction.user.guild_permissions.manage_messages:
@@ -79,57 +48,101 @@ class DeleteMessageView(discord.ui.View):
             await interaction.response.send_message(error_text, ephemeral=True)
             return False
 
+# Fonction utilitaire pour envoyer un message avec un bouton de suppression
 async def send_with_delete_button(
-    interaction: Union[discord.ApplicationContext, discord.Message],
+    interaction: Union[commands.Context, Message, Interaction],
     user: Member,
     content: Optional[str] = None,
     embed: Optional[Embed] = None,
-    file: Optional[File] = MISSING,
-    timeout: int = 180
+    file: Optional[File] = None,
+    view: Optional[View] = None,
+    timeout: int = 180,
 ):
-    view = DeleteMessageView(user=user, timeout=timeout)
+    del_view = DeleteMessageView(user=user, timeout=timeout)
 
-    if isinstance(interaction, discord.ApplicationContext):
+    if view:
+        view = await merge_views(view, del_view)
+    else:
+        view = del_view
+
+    if isinstance(interaction, Interaction):
         if interaction.response.is_done():
-            message = await interaction.followup.send(
-                content=content,
-                embed=embed,
-                file=file,
-                view=view,
-                wait=True
-            )
+            if file:
+                message = await interaction.followup.send(
+                    content=content,
+                    embed=embed,
+                    file=file,
+                    view=view,
+                    wait=True
+                )
+            else:
+                message = await interaction.followup.send(
+                    content=content,
+                    embed=embed,
+                    view=view,
+                    wait=True
+                )
         else:
-            message = await interaction.respond(
-                content=content,
-                embed=embed,
-                file=file,
-                view=view
-            )
+            if file:
+                message = await interaction.send(
+                    content=content,
+                    embed=embed,
+                    file=file,
+                    view=view,
+                )
+            else:
+                message = await interaction.send(
+                    content=content,
+                    embed=embed,
+                    view=view,
+                )
     else:
         message = await interaction.edit(
             content=content,
             embed=embed,
-            file=file,
-            view=view
+            view=view,
         )
 
-    view.message = message  # Associer le message à la vue
-    await view.wait()
+    await del_view.wait()
 
     try:
         await message.edit(view=None)
     except (HTTPException, NotFound):
         pass
 
-async def send_timeout_msg(ctx, title: str, user: discord.User, ephemeral: bool = False):
+# Fonction utilitaire pour envoyer un message de timeout
+async def send_timeout_msg(ctx: Union[commands.Context, Message, Interaction], title: str, user: nextcord.User, ephemeral: bool = False):
+    embed = ModernEmbed(
+        title=f"{title} - {emoji.get('animated_clock')} Timeout",
+        description=f"\n> {emoji.get('discord_mention')} {user.mention} Temps écoulé ! Vous avez pris trop de temps à répondre :/",
+    )
 
-    embed = ModernEmbed(title=f"{title} - {emoji.animated_clock} Timeout",
-                        description=f"\n> {emoji.discord_mention} {user.mention} Temps écoulé ! Vous avez prit trop de temps a répondre :/")
-
-    if isinstance(ctx, discord.ApplicationContext):
+    if isinstance(ctx, Interaction):
         if ctx.response.is_done():
             await ctx.followup.send(embed=embed, ephemeral=ephemeral)
         else:
-            await ctx.respond(embed=embed, ephemeral=ephemeral)
-    else:
+            await ctx.send(embed=embed, ephemeral=ephemeral)
+    elif isinstance(ctx, Message):
         await ctx.edit(embed=embed, view=None)
+    else:
+        await ctx.send(embed=embed)
+
+
+async def merge_views(base_view: nextcord.ui.View, additional_view: nextcord.ui.View) -> None:
+    """
+    Adds components from `additional_view` to `base_view` without exceeding Discord's limit.
+    This modifies `base_view` directly.
+
+    Parameters:
+        base_view (nextcord.ui.View): The view to which components are added.
+        additional_view (nextcord.ui.View): The view providing additional components.
+    """
+    if not isinstance(base_view, nextcord.ui.View) or not isinstance(additional_view, nextcord.ui.View):
+        raise TypeError("Both base_view and additional_view must be instances of nextcord.ui.View")
+
+    # Iterate through components in additional_view
+    for component in additional_view.children:
+        if len(base_view.children) >= 25:  # Discord's limit
+            log.warn("Warning: Cannot add more components. Discord's limit of 25 reached.")
+            break
+        base_view.add_item(component)

@@ -1,10 +1,12 @@
 from datetime import datetime
+from nextcord import Interaction
 from config import config
 from typing import Union
 from enum import Enum
-import discord
+import nextcord
 
 from emojis import emoji
+
 
 def Icon() -> str:
     today = datetime.today()
@@ -20,103 +22,101 @@ def Icon() -> str:
 
     # Vérification pour les dates précises
     if (day, month) in special_icons:
-        logo = emoji.get(special_icons[(day, month)])
+        logo = emoji.get('get')(special_icons[(day, month)])
     elif (None, month) in special_icons:
-        logo = emoji.get(special_icons[(None, month)])
+        logo = emoji.get('get')(special_icons[(None, month)])
     else:
         logo = emoji.get("star_icon")
 
     return logo
 
+
 class IconType(Enum):
-    none = ""
     dynamic_icon = Icon()
 
 
-class ModernEmbed(discord.Embed):
-    def __init__(self, icon: Union[str, IconType] = IconType.dynamic_icon, title: str = "", description: str = "", color: Union[int, discord.Color] = config.EMBED.COLOR):
-        self.icon = icon.value
-        self.title = title
-        self.description = description
+class ModernEmbed(nextcord.Embed):
+    def __init__(
+        self,
+        icon: Union[str, IconType] = IconType.dynamic_icon,
+        title: str = "",
+        description: str = "",
+        color: Union[int, nextcord.Color] = config.EMBED.COLOR,
+    ):
+        self.icon = icon.value if isinstance(icon, IconType) else icon
+        self.title_text = title
+        self.description_text = description
+        self.color = color
 
-        super().__init__(description=self.get_text(), color=color)
-
-    def _set_description(self):
-        self.set_description(self.get_text())
+        super().__init__(description=self.get_text(), color=self.color)
 
     def get_text(self):
         text = ""
-        if self.title:
-            text = f"### {self.icon} {self.title}"
-        if self.description:
-            text += f"\n\n{self.description}"
-
+        if self.title_text:
+            text += f"### {self.icon} {self.title_text}"
+        if self.description_text:
+            text += f"\n\n{self.description_text}"
         return text
 
     def set_icon(self, icon: Union[str, IconType]):
-        self.icon = icon.value
-        self._set_description()
+        self.icon = icon.value if isinstance(icon, IconType) else icon
+        self.update()
+        return self
 
     def set_title(self, title: str):
-        self.title = title
-        self._set_description()
+        self.title_text = title
+        self.update()
         return self
 
-    def set_description(self, description: str):
-        self.description = description
-        self._set_description()
+    def set_description(self, description: str = None):
+        if description is not None:
+            self.description_text = description
+        self.update()
         return self
+
+    def update(self):
+        full_description = self.get_text()
+        self.description = full_description
 
 class IconTypeError(Enum):
     error = emoji.get("achtung_icon")
 
+
 class ErrorEmbed(ModernEmbed):
-    def __init__(self, description: str, title: str = None, code_style: bool = False, icon: Union[str, IconTypeError] = IconTypeError.error, color: Union[int, discord.Color] = config.EMBED.COLOR):
-        self.icon = icon
+    def __init__(self, description: str, title: str = None, code_style: bool = False,
+                 icon: Union[str, IconTypeError] = IconTypeError.error,
+                 color: Union[int, nextcord.Color] = config.EMBED.COLOR):
+        self.icon = icon.value
         self.title = f"Erreur {f'| {title}' if title else ''}"
         if code_style:
             self.description = f"```PYTHON\n {description} \n```"
         else:
-            self.description = f"> {description}"
+            self.description = f">>> {description}"
 
         super().__init__(title=self.title, description=self.description, icon=self.icon, color=color)
+
 
 class IconTypeLoading(Enum):
     discord_loading = emoji.get("discord_loading")
 
-class LoadingEmbed(discord.Embed):
-    def __init__(self, icon: Union[str, IconTypeLoading] = IconTypeLoading.discord_loading, title: str = "Loading...", description: str = "", color: Union[int, discord.Color] = config.EMBED.COLOR):
+
+class LoadingEmbed(ModernEmbed):
+    def __init__(self, icon: Union[str, IconTypeLoading] = IconTypeLoading.discord_loading, title: str = "Loading...",
+                 description: str = "", color: Union[int, nextcord.Color] = config.EMBED.COLOR):
         self.icon = icon.value
         self.title = title
         self.description = description
 
-        super().__init__(description=self.get_text(), color=color)
-
-    def _set_description(self):
-        self.set_description(self.get_text())
+        super().__init__(title=self.title, description=self.description, icon=self.icon, color=color)
 
     def get_text(self):
         text = f"## {self.icon} {self.title}\n\n{'>>> ' + self.description if self.description else ''}"
         return text
 
-    def set_icon(self, icon: Union[str, IconType]):
-        self.icon = icon.value
-        self._set_description()
-
-    def set_title(self, title: str):
-        self.title = title
-        self._set_description()
-        return self
-
-    def set_description(self, description: str):
-        self.description = description
-        self._set_description()
-        return self
-
 
 # Advanced Loading Embed
 class LoadingPercent:
-    def __init__(self, ctx: discord.ApplicationContext, title: str, prefix: str, max_value: int,
+    def __init__(self, ctx: Interaction, title: str, prefix: str, max_value: int,
                  ephemeral: bool = False, bar_length: int = 6):
         self.ctx = ctx
         self.title = title
@@ -130,13 +130,13 @@ class LoadingPercent:
 
     def get_progress_emoji(self, value: int) -> str:
         """Génère une barre de chargement en émojis basée sur la progression."""
-        emoji1_empty = emoji.loading_none_1
-        emoji2_empty = emoji.loading_none_2
-        emoji3_empty = emoji.loading_none_3
+        emoji1_empty = emoji.get('loading_none_1')
+        emoji2_empty = emoji.get('loading_none_2')
+        emoji3_empty = emoji.get('loading_none_3')
 
-        emoji1_fill = emoji.loading_fill_1
-        emoji2_fill = emoji.loading_fill_2
-        emoji3_fill = emoji.loading_fill_3
+        emoji1_fill = emoji.get('loading_fill_1')
+        emoji2_fill = emoji.get('loading_fill_2')
+        emoji3_fill = emoji.get('loading_fill_3')
 
         total_slots = self.bar_length
         progress = round((value * total_slots) / self.max_value)
@@ -163,7 +163,7 @@ class LoadingPercent:
         loading_bar = start_emoji + middle_emojis + end_emoji
         return loading_bar
 
-    def to_embed(self, value: int, prefix: str = None) -> discord.Embed:
+    def to_embed(self, value: int, prefix: str = None) -> nextcord.Embed:
         """Create an embed representing the current loading state."""
         if prefix is None:
             prefix = self.prefix
@@ -178,7 +178,7 @@ class LoadingPercent:
     async def send(self):
         """Send the initial message with loading progress."""
         embed = self.to_embed(value=0)
-        self.msg = await self.ctx.respond(embed=embed, ephemeral=self.ephemeral)
+        self.msg = await self.ctx.send(embed=embed, ephemeral=self.ephemeral)
 
     async def edit(self, value: int, prefix: str = None):
         """Edit the loading progress message."""
@@ -188,6 +188,6 @@ class LoadingPercent:
         embed = self.to_embed(value=value, prefix=prefix)
         await self.msg.edit(embed=embed)
 
-    async def get_msg(self) -> discord.Message:
+    async def get_msg(self) -> nextcord.Message:  # Remplacement de 'nextcord.Message' par 'nextcord.Message'
         """Return the sent message."""
         return self.msg

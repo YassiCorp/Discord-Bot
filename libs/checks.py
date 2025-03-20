@@ -1,5 +1,7 @@
 from typing import TypeVar, Callable
-from discord.ext.commands import check, Context
+
+from nextcord import Interaction
+from nextcord.ext.application_checks import check
 
 from exceptions import *
 from config import config
@@ -11,8 +13,8 @@ def is_owner() -> Callable[[T], T]:
     This is a custom check to see if the user executing the command is an owner of the bot.
     """
 
-    async def predicate(interaction: Context) -> bool:
-        if not interaction.author.id in config.get("BOT_OWNER"):
+    async def predicate(interaction: Interaction) -> bool:
+        if not interaction.user.id in config.get("BOT_OWNER"):
             raise UserNotOwner
         return True
 

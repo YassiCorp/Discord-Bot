@@ -1,11 +1,13 @@
+import nextcord
 from PIL import Image, ImageDraw
-from discord.ext import commands, pages
-from discord.ext.pages import Page
+from nextcord.ext import commands
+from nextcord import SlashOption, Interaction
 
 from libs.embed import ModernEmbed, LoadingEmbed, ErrorEmbed
-from libs.message import send_with_delete_button, send_timeout_msg, default_page_buttons, buttonGoto
+from libs.message import send_with_delete_button, send_timeout_msg
+from libs.paginator import Page, Paginator
 from libs.redis_server import redisServer
-from libs.utils import ClassicUrlButton
+from libs.utils import ClassicUrlButton, autocomplete, find_option_value
 from config import config
 from emojis import emoji
 
@@ -13,37 +15,17 @@ import io
 import json
 import random
 import aiohttp
-import discord
+import nextcord
 
 CACHE_DURATION = 3600
 
 guilds = config.BOT.GUILDS
 redis_cache = redisServer
 
-class MyView(discord.ui.View):
-    def __init__(self, page: discord.ext.pages.pagination.Paginator, options: list[discord.SelectOption]):
-        super().__init__()
-        self.page = page
-        self.options = options
 
-        # On crée le sélecteur dynamiquement et on l'ajoute à la vue
-        self.select = discord.ui.Select(
-            placeholder="Choose a Flavor!",
-            min_values=1,
-            max_values=1,
-            options=options,
-            row=1
-        )
-        self.select.callback = self.select_callback  # On attache la méthode callback au sélecteur
-        self.add_item(self.select)  # On ajoute le sélecteur à la vue
-
-    async def select_callback(self, select, interaction):  # Le callback pour le sélecteur
-        await self.page.goto_page(page_number=5)
-
-
-class linesTemplateMemeModal(discord.ui.Modal):
+class linesTemplateMemeModal(nextcord.ui.Modal):
     def __init__(self, lines: int, exemple_text: list):
-        super().__init__(timeout=5 * 60, title="Créer un meme avec amour")
+        super().__init__(timeout=2 * 60, title="Créer un meme avec amour")
         self.result = None
 
         placeholders = ["YassiCorp Bot est trop beau !",
@@ -56,15 +38,15 @@ class linesTemplateMemeModal(discord.ui.Modal):
             # Si l'indice dépasse la longueur de `exemple_texte`, on utilise le placeholder par défaut
             placeholder = exemple_text[i] if i < len(exemple_text) else random.choice(placeholders)
 
-            input_text = discord.ui.InputText(
+            input_text = nextcord.ui.TextInput(
                 label=f"Ligne n{i+1}",
-                style=discord.InputTextStyle.short,
+                style=nextcord.TextInputStyle.short,
                 placeholder=f"Exemple: {placeholder}",
                 required=(i == 0)  # Le premier champ est obligatoire
             )
             self.add_item(input_text)
 
-    async def callback(self, interaction: discord.Interaction):
+    async def callback(self, interaction: nextcord.Interaction):
         # Récupérer les valeurs des items directement avec une compréhension de liste
         values = []
         for item in self.children:
@@ -73,6 +55,7 @@ class linesTemplateMemeModal(discord.ui.Modal):
 
         self.result = values
         await interaction.response.defer()
+        self.stop()
 
 
 async def get_id_by_name(name_to_find: str):
@@ -94,7 +77,7 @@ async def get_template_list():
     """Appelle l'API et récupère les templates si le cache a expiré."""
 
     # Vérifie si les données en cache existent et sont toujours valides
-    cached_templates = redis_cache.get("meme-templates")
+    cached_templates = redis_cache.get("memes.templates")
 
     if cached_templates:
         templates = json.loads(cached_templates)
@@ -123,23 +106,11 @@ async def get_template_list():
 
     # Met à jour le cache Redis avec les nouvelles données et le timestamp actuel
     templates = (ids, names)
-    await redis_cache.set("meme-templates", json.dumps(templates), ex=CACHE_DURATION)
+    await redis_cache.set("memes.templates", json.dumps(templates), ex=CACHE_DURATION)
 
     return ids, names
 
-
-async def get_templates(ctx: discord.AutocompleteContext):
-    """Fonction d'autocomplétion pour les templates"""
-    ids, names = await get_template_list()
-
-    # En fonction de la sélection dans l'autocomplete, retourne les ids ou les noms
-    template_fetch = ctx.options['template_fetch']
-    if template_fetch == "Par ID":
-        return ids
-    else:
-        return names
-
-async def get_polices(ctx: discord.AutocompleteContext):
+async def autocomplete_get_polices(ctx, interaction: Interaction, query: str):
     async with aiohttp.ClientSession() as session:
         async with session.get("https://api.memegen.link/fonts") as request:
             response = await request.json(encoding="utf-8")
@@ -149,9 +120,9 @@ async def get_polices(ctx: discord.AutocompleteContext):
 
     ids = []
     for font in response:
-        ids = font.get("id")
+        ids.append(font.get("id"))
 
-    return ids
+    return await autocomplete(ids, query=query)
 
 def add_cutout_effect(img):
     """Ajoute une bulle de dialogue avec une découpe en ellipse en haut et un triangle en bas pointant vers le haut."""
@@ -190,9 +161,6 @@ def add_cutout_effect(img):
     return img
 
 
-
-
-
 class Meme(commands.Cog, name="meme"):
     def __init__(self, bot):
         self.bot = bot
@@ -206,19 +174,22 @@ class Meme(commands.Cog, name="meme"):
             description=f"L'api meme ne repond pas !"
                         f"\n\n> -# **Veuillez ressayer plus tard**")
 
-    meme = discord.SlashCommandGroup("meme", "Des meme par ici... Par la...", guild_ids=guilds)
+    @nextcord.slash_command(
+        name="meme",
+        description="Des meme par ici... Par la...", 
+        guild_ids=guilds
+    )
+    async def meme(self, ctx: Interaction):
+        pass    
 
-    @meme.command(
+    @meme.subcommand(
         name="random",
         description="Un petit mème random pour débuter la journée !"
     )
-    async def meme_random(self, ctx: discord.ApplicationContext,
-                          subreddit=discord.Option(
-                              input_type=str,
+    async def meme_random(self, ctx: Interaction,
+                          subreddit=SlashOption(
                               description="Choisis un subreddit dans lequel tu veux que le mème soit pris !",
                               default=None)) -> None:
-
-        await ctx.defer()
 
         default_subreddits = ["memes",
                               "dankmemes",
@@ -230,13 +201,12 @@ class Meme(commands.Cog, name="meme"):
         else:
             url = f"https://meme-api.com/gimme/{random.choice(default_subreddits)}/1"
 
-        async with aiohttp.ClientSession() as session:
-            async with session.get(url) as request:
-                response = await request.json(encoding="utf-8")
-
-        if request.status != 200:  # Api ne repond pas
+        try:
+            async with aiohttp.ClientSession() as session:
+                async with session.get(url) as request:
+                    response = await request.json(encoding="utf-8")
+        except:  # Api ne repond pas
             embed = self.ERROR_API
-
             await send_with_delete_button(ctx, user=ctx.user, embed=embed)
             return
 
@@ -255,22 +225,20 @@ class Meme(commands.Cog, name="meme"):
         embed.set_footer(text=f"{author} - r/{subreddit}")
         embed.set_image(url=url)
 
-        view = ClassicUrlButton(url=postLink, emoji=emoji.reddit_icon, label="Lien vers le post")
+        view = ClassicUrlButton(url=postLink, emoji=emoji.get('reddit_icon'), label="Lien vers le post")
 
-        await ctx.respond(embed=embed, view=view)
+        await ctx.send(embed=embed, view=view)
 
-    @meme.command(
+    @meme.subcommand(
         name="template",
         description="Fait une recherche d'une template !"
     )
-    async def meme_template(self, ctx: discord.ApplicationContext,
-                          template=discord.Option(
-                              input_type=str,
+    async def meme_template(self, ctx: Interaction,
+                          template: str = SlashOption(
                               description="Le nom / id de la template !",
-                              autocomplete=discord.utils.basic_autocomplete(get_templates),
+                              autocomplete=True,
                               default=None),
-                          template_fetch=discord.Option(
-                              input_type=str,
+                          template_fetch: str = SlashOption(
                               description="Choisir la template par son nom ou par son ID ?",
                               choices=['Par ID', 'Par Nom'],
                               default='Par Nom')
@@ -304,19 +272,17 @@ class Meme(commands.Cog, name="meme"):
 
             embed = ModernEmbed(title=f"Meme Template",
                                 description=f"## {name}"
-                                            f"\n{emoji.discord_search} Template id: **`{id}`**"
+                                            f"\n{emoji.get('discord_search')} Template id: **`{id}`**"
                                             f"\n> **›** Lines: `{lines}`"
                                             f"\n> **›** Overlays: `{overlays}`"
-                                            f"\n\n**{emoji.discord_pencil} • Exemple:**"
+                                            f"\n\n**{emoji.get('discord_pencil')} • Exemple:**"
                                             f"\n```{exemple_text}```")
 
             embed.set_image(url=exemple_url)
 
-            await ctx.respond(embed=embed)
+            await ctx.send(embed=embed)
 
         else: # IF NO TEMPLATE
-
-            await ctx.defer()
 
             async with aiohttp.ClientSession() as session:
                 async with session.get("https://api.memegen.link/templates") as request:
@@ -342,58 +308,47 @@ class Meme(commands.Cog, name="meme"):
 
                 embed = ModernEmbed(title=f"Meme Template `{X}`",
                                     description=f"## {name}"
-                                                f"\n{emoji.discord_search} Template id: **`{id}`**"
+                                                f"\n{emoji.get('discord_search')} Template id: **`{id}`**"
                                                 f"\n> **›** Lines: `{lines}`"
                                                 f"\n> **›** Overlays: `{overlays}`"
-                                                f"\n\n**{emoji.discord_pencil} • Exemple:**"
+                                                f"\n\n**{emoji.get('discord_pencil')} • Exemple:**"
                                                 f"\n```{exemple_text}```")
 
                 embed.set_image(url=exemple_url)
 
                 mypages.append(Page(embeds=[embed]))
 
-            paginator = pages.Paginator(
+            paginator = Paginator(
                 pages=mypages,
                 author_check=True,
                 show_disabled=True,
-                show_indicator=True,
-                use_default_buttons=False,
-                custom_buttons=default_page_buttons,
                 loop_pages=True,
                 timeout=60 * 10,  # 10 minutes
             )
 
-            await paginator.respond(interaction=ctx.interaction)
+            await paginator.send(ctx)
 
-            view = buttonGoto(max_pages=len(mypages), page=paginator)
-            await paginator.update(custom_view=view)
-
-
-
-    @meme.command(
+    @meme.subcommand(
         name="create",
         description="Sois creatif avec ton propre meme !"
     )
-    async def meme_create(self, ctx: discord.ApplicationContext,
-                          template=discord.Option(
-                              input_type=str,
+    async def meme_create(self, ctx: Interaction,
+                          template: str = SlashOption(
                               description="Le nom / id de la template !",
-                              autocomplete=discord.utils.basic_autocomplete(get_templates),
+                              autocomplete=True,
                               required=True),
-                          text=discord.Option(
+                          text: str = SlashOption(
                               name="texte",
-                              input_type=str,
                               description=r"Utilise '\n' pour créer une nouvelle ligne. PS : Laisse vide pour obtenir un menu super chouette.",
                               default=None),
-                          template_fetch=discord.Option(
-                              input_type=str,
+                          template_fetch: str = SlashOption(
                               description="Choisir la template par son nom ou par son ID ?",
                               choices=['Par ID', 'Par Nom'],
                               default='Par Nom'),
-                          police=discord.Option(
-                              input_type=str,
+                          police: str = SlashOption(
                               description="Choisis la police de ton choix ! (pas ceux qui sont racistes)",
-                              autocomplete=discord.utils.basic_autocomplete(get_polices),
+                              autocomplete_callback=autocomplete_get_polices,
+                              autocomplete=True,
                               default=None)
                           ) -> None:
 
@@ -420,18 +375,19 @@ class Meme(commands.Cog, name="meme"):
             exemple_text = response.get("example").get("text")
 
             modal = linesTemplateMemeModal(lines=lines, exemple_text=exemple_text)
-            await ctx.send_modal(modal=modal)
+            await ctx.response.send_modal(modal)
 
-            msg = await ctx.respond(embed=LoadingEmbed())
+            msg = await ctx.send(embed=LoadingEmbed())
 
             await modal.wait()
             if not modal.result:
+                await send_timeout_msg(msg, title="Meme Create", user=ctx.user)
                 return
 
             text = modal.result
 
         else:
-            msg = await ctx.respond(embed=LoadingEmbed())
+            msg = await ctx.send(embed=LoadingEmbed())
             text = str(text).split(r"\n")
 
         data = {
@@ -447,7 +403,7 @@ class Meme(commands.Cog, name="meme"):
 
         async with aiohttp.ClientSession() as session:
             async with session.post(f"https://api.memegen.link/templates/{template}", json=data) as response:
-                url = response.url
+                url = str(response.url)
 
         embed = ModernEmbed(title=f"Meme Create {emoji.get('beta1')}{emoji.get('beta2')}{emoji.get('beta3')}",
                             description=f"> {emoji.get('discord_mention')} Meme créé avec amour par {ctx.user.mention}")
@@ -457,18 +413,41 @@ class Meme(commands.Cog, name="meme"):
 
         await msg.edit(embed=embed)
 
-    @meme.command(
+    @meme_template.on_autocomplete("template")
+    @meme_create.on_autocomplete("template")
+    async def autocomplete_get_templates(self, interaction: Interaction, query: str):
+        """
+        Fonction d'autocomplétion pour les templates.
+
+        Args:
+            interaction: L'interaction déclenchée par l'utilisateur.
+            query: L'entrée de l'utilisateur (ce qu'il a tapé).
+
+        Returns:
+            Une liste filtrée correspondant à l'autocomplétion (IDs ou noms).
+        """
+        ids, names = await get_template_list()
+
+        options = interaction.data.get('options', [])
+        template_fetch = find_option_value(options, 'template_fetch', 'Par Nom')
+
+        if template_fetch == "Par ID":
+            list_autocomplete = await autocomplete(input_list=ids, query=query)
+        else:
+            list_autocomplete = await autocomplete(input_list=names, query=query)
+
+        await interaction.response.send_autocomplete(list_autocomplete)
+
+    @meme.subcommand(
         name="image",
         description="Rajoute des effects drole a ton image !"
     )
-    async def meme_image(self, ctx: discord.ApplicationContext,
-                         effect=discord.Option(
-                            input_type=str,
+    async def meme_image(self, ctx: Interaction,
+                         effect: str = SlashOption(
                             description="Choisir l'effet'",
                             choices=['bulle'],
                             required=True),
-                         image: discord.Attachment = discord.Option(
-                            discord.Attachment,
+                         image: nextcord.Attachment = SlashOption(
                             description="L'image a modifier",
                             required=True),
                          ) -> None:
@@ -486,8 +465,8 @@ class Meme(commands.Cog, name="meme"):
         img.save(buffer, "PNG")
         buffer.seek(0)  # Revenir au début du buffer pour l'envoyer
 
-        # Envoyer l'image modifiée à Discord
-        await ctx.respond(file=discord.File(fp=buffer, filename="image_modifiee.png"))
+        # Envoyer l'image modifiée à nextcord
+        await ctx.send(file=nextcord.File(fp=buffer, filename="image_modifiee.png"))
 
 
 def setup(bot):

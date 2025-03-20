@@ -1,5 +1,6 @@
-import discord
-from discord.ext import commands
+import nextcord
+from nextcord import Interaction
+from nextcord.ext import commands
 from libs.embed import ModernEmbed, ErrorEmbed
 
 
@@ -7,19 +8,19 @@ class Owner(commands.Cog, name="owner"):
     def __init__(self, bot) -> None:
         self.bot = bot
 
-    @discord.slash_command(
+    @nextcord.slash_command(
         name="shutdown",
         description="Make the bot shutdown.",
     )
     @commands.is_owner()
-    async def shutdown(self, ctx: discord.ApplicationContext) -> None:
+    async def shutdown(self, ctx: Interaction) -> None:
         """
         Shuts down the bot.
 
         :param ctx: The hybrid command Context.
         """
         embed = ModernEmbed(description="Shutting down. Bye! :wave:")
-        await ctx.respond(embed=embed)
+        await ctx.send(embed=embed)
         await self.bot.close()
 
 

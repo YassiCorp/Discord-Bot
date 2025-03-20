@@ -1,11 +1,11 @@
 import aiofiles, aiohttp, asyncio
 import io, os, re, PIL
-import discord
+import nextcord
 import random
 
 from PIL import Image, ImageDraw
-from discord import HTTPException, NotFound
-from discord.ext import commands
+from nextcord import HTTPException, NotFound, Interaction, SlashOption
+from nextcord.ext import commands
 
 from colormath2.color_objects import sRGBColor, LabColor
 from colormath2.color_conversions import convert_color
@@ -21,15 +21,15 @@ from libs.utils import ClassicUrlButton
 guilds = config.BOT.GUILDS
 
 
-class CoinFlip_Choice(discord.ui.View):
+class CoinFlip_Choice(nextcord.ui.View):
     def __init__(self, user):
         super().__init__(timeout=30)
-        self.message = f"{emoji.discord_support} · Tu n'es pas l'utilisateur demandé."
+        self.message = f"{emoji.get('2')} · Tu n'es pas l'utilisateur demandé."
         self.user = user
         self.value = None
 
-    @discord.ui.button(label="Face", style=discord.ButtonStyle.blurple)
-    async def face(self, button: discord.ui.Button, interaction: discord.Interaction):
+    @nextcord.ui.button(label="Face", style=nextcord.ButtonStyle.blurple)
+    async def face(self, button: nextcord.ui.Button, interaction: nextcord.Interaction):
         if interaction.user.id == self.user.id:
             await interaction.response.defer()
             self.value = "Face"
@@ -37,8 +37,8 @@ class CoinFlip_Choice(discord.ui.View):
         else:
             await interaction.response.send_message(self.message, ephemeral=True)
 
-    @discord.ui.button(label="Pile", style=discord.ButtonStyle.blurple)
-    async def pile(self, button: discord.ui.Button, interaction: discord.Interaction):
+    @nextcord.ui.button(label="Pile", style=nextcord.ButtonStyle.blurple)
+    async def pile(self, button: nextcord.ui.Button, interaction: nextcord.Interaction):
         if interaction.user.id == self.user.id:
             await interaction.response.defer()
             self.value = "Pile"
@@ -56,21 +56,21 @@ class Fun(commands.Cog, name="fun"):
     # | |  → "CoinFlip fait tourner une piece ;)"  | |
     # | |__________________________________________| |
     # |______________________________________________|
-    @discord.slash_command(
+    @nextcord.slash_command(
         name="coinflip",
         description="Faire un lancer de pièce. (Bah c bon j'ai compris, j'avais pas d'idée de cmd)",
         guild_ids=guilds,
     )
-    async def coinflip(self, ctx: discord.ApplicationContext) -> None:
+    async def coinflip(self, ctx: Interaction) -> None:
         buttons = CoinFlip_Choice(user=ctx.user)
         embed = ModernEmbed(title=f"Coin Flip",
-                            description=f"> {emoji.discord_mention} {ctx.user.mention}, Quel est votre pari ? {emoji.sans}",
+                            description=f"> {emoji.get('sans')} {ctx.user.mention}, Quel est votre pari ? {emoji.get('sans')}",
                             color=0x9C84EF)
-        msg = await ctx.respond(embed=embed, view=buttons)
+        msg = await ctx.send(embed=embed, view=buttons)
         await buttons.wait()
 
         if buttons.value is None:
-            await send_timeout_msg(ctx=msg, title="Coin Flip", user=ctx.user)
+            await send_timeout_msg(msg, title="Coin Flip", user=ctx.user)
             return
 
         result = random.choice(["Face", "Pile"])
@@ -80,7 +80,7 @@ class Fun(commands.Cog, name="fun"):
         urls = ["https://cdn.discordapp.com/attachments/937796349884248104/1044680461596766378/5291f56897d748b1ca0a10c90023588d.gif", "https://cdn.discordapp.com/attachments/937796349884248104/1044681526958374992/d090ed930df18a003a77e74b580390536627a882r1-500-200_hq.gif", "https://cdn.discordapp.com/attachments/937796349884248104/1044681526404731001/tumblr_p9vwb6XoLx1w9y0e9o3_500.gif"]
 
         embed = ModernEmbed(title=f"Coin Flip",
-                            description=f"> {emoji.discord_mention} {ctx.user.mention}, Lancement de la piece...",
+                            description=f"> {emoji.get('discord_mention')} {ctx.user.mention}, Lancement de la piece...",
                             color=0x9C84EF)
 
         embed.set_image(url=random.choice(urls))
@@ -88,7 +88,7 @@ class Fun(commands.Cog, name="fun"):
         try:
             await msg.edit(embed=embed, view=None, content=None)
         except (HTTPException, NotFound):
-            msg = await ctx.respond(embed=embed, content=None)
+            msg = await ctx.send(embed=embed, content=None)
 
         await asyncio.sleep(3)
 
@@ -96,11 +96,11 @@ class Fun(commands.Cog, name="fun"):
 
         if buttons.value == result:
             embed = ModernEmbed(title=f"Coin Flip",
-                                description=f"\n> {emoji.minecraft_accept} Bravo ! Vous avez choisi `{buttons.value}` et j'ai lancé la pièce sur `{result}`.",
+                                description=f"\n> {emoji.get('minecraft_accept')} Bravo ! Vous avez choisi `{buttons.value}` et j'ai lancé la pièce sur `{result}`.",
                                 color=0x9C84EF)
         else:
             embed = ModernEmbed(title=f"Coin Flip",
-                                description=f"\n> {emoji.minecraft_deny} Woops! Vous avez choisi `{buttons.value}` et j'ai lancé la pièce sur `{result}`, meilleure chance la prochaine fois !",
+                                description=f"\n> {emoji.get('minecraft_deny')} Woops! Vous avez choisi `{buttons.value}` et j'ai lancé la pièce sur `{result}`, meilleure chance la prochaine fois !",
                                 color=0xE02B2B)
 
         embed.set_thumbnail(url="https://cdn.discordapp.com/attachments/937796349884248104/1044690025067053086/img-cdn.magiceden.gif")
@@ -108,7 +108,7 @@ class Fun(commands.Cog, name="fun"):
         try:
             await msg.edit(embed=embed, view=None, content=ctx.user.mention)
         except (HTTPException, NotFound):
-            await ctx.respond(embed=embed, content=ctx.user.mention)
+            await ctx.send(embed=embed, content=ctx.user.mention)
 
     #  ______________________________________
     # |  __________________________________  |
@@ -151,16 +151,16 @@ class Fun(commands.Cog, name="fun"):
                     return [True, path]
 
                 else:
-                    description = f"**{emoji.achtung_icon} Mhh J'arrive pas a installer la photo...**\n\n> {emoji.discord_cross} La photo de profil ne veut pas s'installer..."
+                    description = f"**{emoji.get('achtung_icon')} Mhh J'arrive pas a installer la photo...**\n\n> {emoji.get('discord_cross')} La photo de profil ne veut pas s'installer..."
                     return [False, description]
 
     async def send_giga_chad_msg(self,
-            ctx: discord.ApplicationContext,
-            user: discord.User,
-            bot: discord.Client,
+            ctx: Interaction,
+            user: nextcord.User,
+            bot: nextcord.Client,
             message: str = "",
     ):
-        msg = await ctx.respond(embed=LoadingEmbed())
+        msg = await ctx.send(embed=LoadingEmbed())
 
         # Vérifier si l'utilisateur est MEE6 (ID utilisateur : 159985870458322944)
         if user.id == 159985870458322944:
@@ -174,7 +174,7 @@ class Fun(commands.Cog, name="fun"):
                 title="Giga Nul",
                 description=f"> Mhhhh, je ... Attends quoi, mais sérieux\n"
                             f"> Qui aime {user.mention}, ce **giga nul**.\n\n"
-                            f"**{emoji.discord_info} • Voilà ce qu'il mérite :**"
+                            f"**{emoji.get('discord_info')} • Voilà ce qu'il mérite :**"
             )
             embed.set_image(url=random.choice(gifs))
 
@@ -194,10 +194,10 @@ class Fun(commands.Cog, name="fun"):
                 title=f"Giga Chad",
                 description=f"{text}\n"
                             f"{message}\n"
-                            f"**{emoji.discord_info} • L'image :**"
+                            f"**{emoji.get('discord_info')} • L'image :**"
             )
 
-            file = discord.File(result, filename="GigaChad_MHHHHHHHH.png")
+            file = nextcord.File(result, filename="GigaChad_MHHHHHHHH.png")
             embed.set_image(url="attachment://GigaChad_MHHHHHHHH.png")
 
             await msg.edit(embed=embed, file=file)
@@ -215,12 +215,12 @@ class Fun(commands.Cog, name="fun"):
             await msg.edit(embed=embed)
 
 
-    @discord.slash_command(
+    @nextcord.slash_command(
         name="gigachad",
         description="Transforme quelqu'un en GigaChad O-O !",
         guild_ids=guilds,
     )
-    async def gigachad(self, ctx: discord.ApplicationContext, utilisateur: discord.User = discord.Option(discord.User, description="Qui mérite un GigaChad !", required=False, default=None)) -> None:
+    async def gigachad(self, ctx: Interaction, utilisateur: nextcord.User = SlashOption(description="Qui mérite un GigaChad !", required=False, default=None)) -> None:
         if utilisateur is None:
             await self.send_giga_chad_msg(ctx, ctx.user, self.bot)
         else:
@@ -262,12 +262,12 @@ class Fun(commands.Cog, name="fun"):
         return round(similarity, 2)
 
     # Commande Discord pour générer une couleur
-    @discord.slash_command(
+    @nextcord.slash_command(
         name="guess_color",
         description="Tu guess le code hex la couleur a l'image (Un jeu cree par un nerd, pour les nerds)",
         guild_ids=guilds,
     )
-    async def guess_color(self, ctx: discord.ApplicationContext):
+    async def guess_color(self, ctx: Interaction):
         # Générer un code couleur aléatoire
         hex_code = self.generate_random_hex()
         image_buffer = self.create_color_image(hex_code)
@@ -275,19 +275,19 @@ class Fun(commands.Cog, name="fun"):
         embed = ModernEmbed(title="Guess The Color",
                             description="> Tentez de deviner le code hex de cette couleur !"
                                         f"\n- Exemple: **`{self.generate_random_hex()}`** "
-                                        f"\n\n-# {emoji.cursor} Veuillez taper le code hex sur ce channel !",
-                            color=discord.Color(int(hex_code.lstrip('#'), 16)))
+                                        f"\n\n-# {emoji.get('cursor')} Veuillez taper le code hex sur ce channel !",
+                            color=nextcord.Color(int(hex_code.lstrip('#'), 16)))
         embed.set_image(url="attachment://color_image.png")
 
-        view = ClassicUrlButton(url="https://htmlcolorcodes.com/", emoji=emoji.icon_world, label="Sélecteur de codes Hex")
+        view = ClassicUrlButton(url="https://htmlcolorcodes.com/", emoji=emoji.get('icon_world'), label="Sélecteur de codes Hex")
 
         # Envoyer l'image de couleur et le code hex original
-        await ctx.respond(embed=embed, file=discord.File(fp=image_buffer, filename="color_image.png"), view=view)
+        await ctx.send(embed=embed, file=nextcord.File(fp=image_buffer, filename="color_image.png"), view=view)
 
         # Fonction pour attendre la réponse de l'utilisateur avec un hex code valide
         def check(m):
             # Valider si le message correspond au format hex
-            return m.author == ctx.author and m.channel == ctx.channel and (re.fullmatch(r"#([A-Fa-f0-9]{6})", m.content) is not None)
+            return m.author == ctx.user and m.channel == ctx.channel and (re.fullmatch(r"#([A-Fa-f0-9]{6})", m.content) is not None)
 
         try:
             # Attendre une réponse de l'utilisateur

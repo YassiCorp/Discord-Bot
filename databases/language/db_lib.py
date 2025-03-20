@@ -1,10 +1,8 @@
-from sqlalchemy import create_engine, Column, String, Integer, TIMESTAMP
+from sqlalchemy import Column, String, Integer, TIMESTAMP
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker
-from libs.file_api import create_file
-from libs import path
+from databases import get_engine
 
-databasePath = f"{path.PATH_DB}/database.db"
 Base = declarative_base()
 
 class ServerLanguage(Base):
@@ -23,8 +21,7 @@ class UserLanguage(Base):
 
 class LanguageDB:
     def __init__(self):
-        create_file(databasePath)
-        self.engine = create_engine(f'sqlite:///{databasePath}', echo=False)
+        self.engine = get_engine()
         Base.metadata.create_all(self.engine)
         self.Session = sessionmaker(bind=self.engine)()
 

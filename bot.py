@@ -1,5 +1,11 @@
-import discord, aiohttp, random, platform, os
-from discord.ext import tasks, commands
+import nextcord
+import aiohttp
+import random
+import platform
+import os
+
+from nextcord import Interaction
+from nextcord.ext import tasks, commands
 from rich.panel import Panel
 from rich.text import Text
 
@@ -15,7 +21,7 @@ log = logger.ConsoleLogger(log_name="bot", log_color="blue")
 class BOT(commands.Bot):
     def __init__(self):
         self.config = config
-        super().__init__(intents=discord.Intents.all())
+        super().__init__(intents=nextcord.Intents.all(), help_command=None)
         self.emoji = emojis.emoji
 
     #  ____________________________________
@@ -28,134 +34,81 @@ class BOT(commands.Bot):
         #await self.sync_commands(force=False, guild_ids=[904344208528257105])
 
         guilds = [self.get_guild(guild) for guild in config.BOT.EMOJI_GUILD]
-        log.info("Synchronisation of the emojis...")
+        log.info("Synchronisation des emojis...")
         await self.emoji.update_from_guilds(guilds)
-        self.emoji.create_emoji_classes()
-        log.success(f"Emojis sync successfully. They are {len(self.emoji.get_all())} emojis !")
+        log.success(f"Emojis synchronisés avec succès. Il y en a {len(self.emoji.get_all())} !")
 
-        log.success(f"Bot launched successfully !")
-        info = (f"✨ » Connected as [blue]{self.user.name}[/]\n"
-                f"👾 » discord API version: [blue]{discord.__version__}[/]\n"
-                f"🐍 » Python version: [blue]{platform.python_version()}[/]\n"
-                f"🖥️ » Launched in: {platform.system()} [blue]{platform.release()}[/] ({os.name})")
-        log.info(Text.from_ansi(get_rich_rendered_object(Panel(info, title="🔎 Informations", expand=False)).replace("\n", "\n             "))) # shit code made with ass to render a rich panel just for your eyes
-        self.status_task.start(), log.info(f"Launching Task Status...")
+        log.success(f"Bot lancé avec succès !")
+        info = (f"✨ » Connecté en tant que [blue]{self.user.name}[/]\n"
+                f"👾 » Nextcord API version: [blue]{nextcord.__version__}[/]\n"
+                f"🐍 » Version Python: [blue]{platform.python_version()}[/]\n"
+                f"🖥️ » Lancé sur: {platform.system()} [blue]{platform.release()}[/] ({os.name})")
+        log.info(Text.from_ansi(get_rich_rendered_object(Panel(info, title="🔎 Informations", expand=False)).replace("\n", "\n             "))) # Code pour afficher les informations
+        self.status_task.start()
+        log.info("Lancement de la tâche Status...")
         if self.config.UPTIME_PUSH.ACTIVATE:
-            self.uptime_task.start(), log.info(f"Launching Uptime Push...")
+            self.uptime_task.start()
+            log.info("Lancement de la tâche Uptime Push...")
 
 
-    @tasks.loop(minutes=1.0)  # <--- Task: automatic status changer.
+    @tasks.loop(minutes=1.0)  # <--- Tâche : changement automatique du statut.
     async def status_task(self) -> None:
         await self.change_presence(
-            activity=discord.Activity(type=discord.ActivityType.listening, name=random.choice(self.config.BOT.STATUS)))
+            activity=nextcord.Activity(type=nextcord.ActivityType.listening, name=random.choice(self.config.BOT.STATUS))  # Remplacement de 'discord.Activity' par 'nextcord.Activity'
+        )
 
     @status_task.before_loop
     async def before_status_task(self) -> None:
         """
-        Before starting the status changing task, we make sure the bot is ready
+        Avant de démarrer la tâche de changement de statut, on s'assure que le bot est prêt
         """
         await self.wait_until_ready()
-        log.success("Task Status UP !")
+        log.success("Tâche Status démarrée !")
 
-    @tasks.loop(minutes=1.0)  # <--- Task: automatic uptime push.
+    @tasks.loop(minutes=1.0)  # <--- Tâche : push uptime automatique.
     async def uptime_task(self) -> None:
         async with aiohttp.ClientSession() as session:
             async with session.get(self.config.UPTIME_PUSH.URL):
                 pass
 
     @uptime_task.before_loop
-    async def before_status_task(self) -> None:
+    async def before_uptime_task(self) -> None:  # Correction du nom de la méthode
         """
-        Before starting the uptime task, we make sure the bot is ready
+        Avant de démarrer la tâche de push uptime, on s'assure que le bot est prêt
         """
         await self.wait_until_ready()
-        log.success("Uptime Task UP !")
+        log.success("Tâche Uptime démarrée !")
 
-    async def on_message(self, message: discord.Message) -> None:
+    async def on_message(self, message: nextcord.Message) -> None:
         """
-        The code in this event is executed every time someone sends a message, with or without the prefix
+        Le code dans cet événement est exécuté chaque fois que quelqu'un envoie un message, avec ou sans le préfixe
 
-        :param message: The message that was sent.
+        :param message: Le message qui a été envoyé.
         """
         if message.author == self.user or message.author.bot:
             return
         await self.process_commands(message)
 
-    async def on_application_command_completion(self, interaction: discord.ApplicationContext) -> None:
+    async def on_application_command_completion(self, interaction: Interaction) -> None:
         """
-        The code in this event is executed every time a normal command has been *successfully* executed.
+        Le code dans cet événement est exécuté chaque fois qu'une commande normale a été *exécutée avec succès*.
 
-        :param interaction: The interaction of the command that has been executed.
+        :param interaction: L'interaction de la commande qui a été exécutée.
         """
-        full_command_name = interaction.command.qualified_name
+        full_command_name = interaction.application_command.qualified_name
         split = full_command_name.split(" ")
         executed_command = str(split[0])
         if interaction.guild is not None:
             log.info(
-                f"Executed {executed_command} command in {interaction.guild.name} (ID: {interaction.guild.id}) by {interaction.user} (ID: {interaction.user.id})"
+                f"Commande {executed_command} exécutée dans {interaction.guild.name} (ID: {interaction.guild.id}) par {interaction.user} (ID: {interaction.user.id})"
             )
         else:
             log.info(
-                f"Executed {executed_command} command by {interaction.user} (ID: {interaction.user.id}) in DMs"
+                f"Commande {executed_command} exécutée par {interaction.user} (ID: {interaction.user.id}) en DM"
             )
 
-    async def on_application_command_error(self, context: discord.ApplicationContext, error) -> None:
-        """
-        Le code de cet événement est exécuté chaque fois qu'une commande valide rencontre une erreur.
+    
 
-        :param context: Le contexte de la commande normale qui a échoué.
-        :param error: L'erreur rencontrée.
-        """
-        if isinstance(error, commands.CommandOnCooldown):
-            minutes, seconds = divmod(error.retry_after, 60)
-            hours, minutes = divmod(minutes, 60)
-            hours = hours % 24
-            embed = ErrorEmbed(
-                title="Cooldown...",
-                description=f"**Veuillez ralentir** - Vous pourrez utiliser cette commande à nouveau dans {f'{round(hours)} heures' if round(hours) > 0 else ''} {f'{round(minutes)} minutes' if round(minutes) > 0 else ''} {f'{round(seconds)} secondes' if round(seconds) > 0 else ''}."
-            )
-            await context.respond(embed=embed)
-        elif isinstance(error, commands.NotOwner) or isinstance(error, exceptions.UserNotOwner):
-            embed = ErrorEmbed(
-                title="Commande securise",
-                description="Vous n'êtes pas le propriétaire du bot !", color=0xE02B2B
-            )
-            await context.respond(embed=embed)
-            if context.guild:
-                log.warning(
-                    f"{context.author} (ID : {context.author.id}) a essayé d'exécuter une commande réservée au propriétaire dans le serveur {context.guild.name} (ID : {context.guild.id}), mais l'utilisateur n'est pas le propriétaire du bot."
-                )
-            else:
-                log.warning(
-                    f"{context.author} (ID : {context.author.id}) a essayé d'exécuter une commande réservée au propriétaire dans les DM du bot, mais l'utilisateur n'est pas le propriétaire du bot."
-                )
-        elif isinstance(error, commands.MissingPermissions):
-            embed = ErrorEmbed(
-                title="Manque de permissions !",
-                description="Vous n'avez pas la/les permission(s) `"
-                            + ", ".join(error.missing_permissions)
-                            + "` pour exécuter cette commande !",
-            )
-            await context.respond(embed=embed)
-        elif isinstance(error, commands.BotMissingPermissions):
-            embed = ErrorEmbed(
-                title="Manque de permissions !",
-                description="Il me manque la/les permission(s) `"
-                            + ", ".join(error.missing_permissions)
-                            + "` pour exécuter complètement cette commande !",
-            )
-            await context.respond(embed=embed)
-        elif isinstance(error, commands.MissingRequiredArgument):
-            embed = ErrorEmbed(
-                title="Manque d'arguments !",
-                # Nous devons capitaliser car les arguments des commandes ne contiennent pas de majuscules dans le code et sont le premier mot du message d'erreur.
-                description=str(error).capitalize(),
-            )
-            await context.respond(embed=embed)
-        else:
-            embed = ErrorEmbed(title=f"{self.emoji.get('Python')} Python Inconnu", description=error, code_style=True)
-            await context.respond(embed=embed)
-            log.error(error)
 
     async def load_cog(self, path: str) -> int:
         errorInt = 0
@@ -171,17 +124,17 @@ class BOT(commands.Bot):
                         log.error(f"{e}")
                         errorInt += 1
                     else:
-                        log.info(f"Loaded extension '{extension}'")
+                        log.info(f"Extension '{extension}' chargée")
         return errorInt
 
     async def load_cogs(self) -> None:
         errorInt = 0
 
-        log.warning("⟳ Loading modules")
-        with log.status("[bold green]Working on guild modules..."):
+        log.warning("⟳ Chargement des modules")
+        with log.status("[bold green]Chargement des modules de guilde..."):
             errorInt += await self.load_cog("cogs")
 
         if errorInt == 0:
-            log.success("✔ Module loading completed successfully")
+            log.success("✔ Chargement des modules terminé avec succès")
         else:
-            log.warning(f"‼ Module loading completed with [bold underline white]{errorInt} error(s)[/]")
+            log.warning(f"‼ Chargement des modules terminé avec [bold underline white]{errorInt} erreur(s)[/]")

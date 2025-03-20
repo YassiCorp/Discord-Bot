@@ -3,14 +3,15 @@ import io
 import time
 
 import aiohttp
-import discord
-from discord.ext import commands, pages
-from discord.ext.pages import Page
+import nextcord
+from nextcord import SlashOption, Interaction
+from nextcord.ext import commands
 
 from config import config
 from emojis import emoji
 from libs.embed import ModernEmbed, LoadingEmbed, ErrorEmbed
-from libs.message import send_with_delete_button, default_page_buttons
+from libs.message import send_with_delete_button
+from libs.paginator import Page, Paginator
 from libs.path import PATH_VIDEOS
 from libs.utils import DoubleUrlButton, mediawiki_to_discord
 from mediawiki import MediaWiki
@@ -19,17 +20,23 @@ guilds = config.BOT.GUILDS
 
 class Minecraft(commands.Cog, name="minecraft"):
     def __init__(self, bot):
-        self.bot: discord.Client = bot
-        self.mc_wiki = MediaWiki(url='https://fr.minecraft.wiki/api.php')
+        self.bot: nextcord.Client = bot
+        self.mc_wiki = MediaWiki(url='https://en.minecraft.wiki/api.php')
 
-    minecraft = discord.SlashCommandGroup("minecraft", "Toute les commandes en rapport avec Minecraft...", guild_ids=guilds)
-
+    @nextcord.slash_command(
+        name="minecraft",
+        description="Toute les commandes en rapport avec Minecraft...",
+        guild_ids=guilds
+    )
+    async def minecraft(self, ctx: Interaction) -> None:
+        pass
+    
     # Some cool commands
-    @minecraft.command(
+    @minecraft.subcommand(
         name="skin",
         description="Minecraft | Avoir le visuel du skin d'un joueur...",
     )
-    async def skin(self, ctx: discord.ApplicationContext, username: str = discord.Option(description="Met une uuid ou un username d'un compte prémium", required=True)) -> None:
+    async def skin(self, ctx: Interaction, username: str = SlashOption(description="Met une uuid ou un username d'un compte prémium", required=True)) -> None:
         async with aiohttp.ClientSession() as session:
             async with session.get(f"https://mc-heads.net/head/{username}") as request:
                 image1 = request.url
@@ -45,7 +52,7 @@ class Minecraft(commands.Cog, name="minecraft"):
 
         embed1 = ModernEmbed(
             title=f"Skin Minceraft",
-            description=f"> {text}\n\n**{emoji.discord_info} • Le Skin:**")
+            description=f"> {text}\n\n**{emoji.get('discord_info')} • Le Skin:**")
 
         embed1.set_thumbnail(url=image1)
         embed1.set_image(url=image2)
@@ -57,15 +64,15 @@ class Minecraft(commands.Cog, name="minecraft"):
                                url2=f"https://namemc.com/profile/{username}",
                                emoji2=emoji.get("icon_world"))
 
-        await ctx.respond(embeds=[embed1], view=view)
+        await ctx.send(embeds=[embed1], view=view)
 
-    @minecraft.command(
+    @minecraft.subcommand(
         name="server",
         description="Minecraft | Te donnera quelques infos sur un serveur en utilisant son ip !",
     )
-    async def server(self, ctx: discord.ApplicationContext, ip: str = discord.Option(description="Met une ip de ton serveur préféré...", required=True), hideip: bool = discord.Option(description="Veux-tu cacher l'ip du serveur ?", choices={"Oui": True, "Non": False}, required=False, default=False)) -> None:
+    async def server(self, ctx: Interaction, ip: str = SlashOption(description="Met une ip de ton serveur préféré...", required=True), hideip: bool = SlashOption(description="Veux-tu cacher l'ip du serveur ?", choices={"Oui": True, "Non": False}, required=False, default=False)) -> None:
 
-        msg = await ctx.respond(embed=LoadingEmbed())
+        msg = await ctx.send(embed=LoadingEmbed())
         new_ip = "censurée" if hideip else ip
 
         async with aiohttp.ClientSession() as session:
@@ -104,15 +111,15 @@ class Minecraft(commands.Cog, name="minecraft"):
                 title=f"Serveur Minceraft",
                 description=f"> Voici les informations pour le serveur"
                             f"\n> avec l'ip `{new_ip}`\n"
-                            f"\n**{emoji.discord_info} • MOTD:**"
+                            f"\n**{emoji.get('discord_info')} • MOTD:**"
                             f"{description}")
 
-            embed.add_field(name=f"{emoji.discord_search} • Joueurs:", value=f"{players_online}/{players_max} joueur(s)")
-            embed.add_field(name=f"{emoji.discord_category} • Version:", value=f"{version_code} {f'| {version_name}' if version_name else ''}")
-            embed.add_field(name=f"{emoji.discord_connection} • Ping:", value=f"{ping:.2f} ms")
+            embed.add_field(name=f"{emoji.get('discord_search')} • Joueurs:", value=f"{players_online}/{players_max} joueur(s)")
+            embed.add_field(name=f"{emoji.get('discord_category')} • Version:", value=f"{version_code} {f'| {version_name}' if version_name else ''}")
+            embed.add_field(name=f"{emoji.get('discord_connection')} • Ping:", value=f"{ping:.2f} ms")
 
             if icon is not None:
-                file = discord.File(io.BytesIO(base64.b64decode(icon.split("base64,")[-1])), filename="server_icon.png")
+                file = nextcord.File(io.BytesIO(base64.b64decode(icon.split("base64,")[-1])), filename="server_icon.png")
                 embed.set_thumbnail(url="attachment://server_icon.png")
                 await send_with_delete_button(msg, user=ctx.user, embed=embed, file=file)
             else:
@@ -127,34 +134,34 @@ class Minecraft(commands.Cog, name="minecraft"):
 
             await send_with_delete_button(msg, user=ctx.user, embed=embed)
 
-    @minecraft.command(
+    @minecraft.subcommand(
         name="gravity",
         description="Minecraft | Pourquoi la gravité n'existe pas sur minecraft ?",
     )
-    async def gravity(self, ctx: discord.ApplicationContext) -> None:
-        file = discord.File(f"{PATH_VIDEOS}/Meme_MC_Gravity.mp4", filename="Meme_MC_Gravity.mp4")
-        msg = await ctx.respond(embed=LoadingEmbed())
+    async def gravity(self, ctx: Interaction) -> None:
+        file = nextcord.File(f"{PATH_VIDEOS}/Meme_MC_Gravity.mp4", filename="Meme_MC_Gravity.mp4")
+        msg = await ctx.send(embed=LoadingEmbed())
         await msg.edit(content=f"> {ctx.user.mention} Voila pourquoi:", file=file, embed=None)
 
-    @minecraft.command(
+    @minecraft.subcommand(
         name="wiki",
         description="Minecraft | Chercher dans le wiki",
     )
-    async def wiki(self, ctx: discord.ApplicationContext,
-                      search: str = discord.Option(required=True, description="L'objet ou items dans minecraft que tu veux chercher"),
-                      results: int = discord.Option(int, description="Combien de résultats tu veux, le clients est roi (le max est 10)", min_value=1, max_value=10, default=3)
+    async def wiki(self, ctx: Interaction,
+                      search: str = SlashOption(description="L'objet ou items dans minecraft que tu veux chercher", required=True),
+                      results: int = SlashOption(description="Combien de résultats tu veux, le clients est roi (le max est 10)", min_value=1, max_value=10, default=3)
                       ) -> None:
 
-        await ctx.defer()
+        msg = await ctx.send(embed=LoadingEmbed())
 
         listResults = self.mc_wiki.search(search, results=results)
         listPages = [self.mc_wiki.page(r) for r in listResults] # create a list of the results
 
         if not listPages:
             embed = ErrorEmbed(title="Minecraft Wiki",
-                               description=f"{emoji.sans} Aucun résultat n'a été trouvé pour la recherche suivante : `{search}`.")
+                               description=f"{emoji.get('sans')} Aucun résultat n'a été trouvé pour la recherche suivante : `{search}`.")
 
-            await ctx.respond(embed=embed)
+            await msg.edit(embed=embed)
             return
 
         mypages = []
@@ -166,23 +173,21 @@ class Minecraft(commands.Cog, name="minecraft"):
             if page.images:
                 embed.set_thumbnail(url=page.images[0])
 
-            view = discord.ui.View(
-                discord.ui.Button(label="Lien", emoji=emoji.get("icon_world"), row=1, url=page.url),
-            )
+            class view(nextcord.ui.View):
+                def __init__(self):
+                    super().__init__(timeout=None)
+                    self.add_item(nextcord.ui.Button(label="Lien", emoji=emoji.get("icon_world"), row=1, url=page.url))
 
-            mypages.append(Page(embeds=[embed], custom_view=view))
+            mypages.append(Page(embeds=[embed], view=view()))
 
-        paginator = pages.Paginator(
+        paginator = Paginator(
             pages=mypages,
             author_check=True,
-            show_disabled=True,
-            show_indicator=True,
-            use_default_buttons=False,
-            custom_buttons=default_page_buttons,
             loop_pages=True,
-            timeout=60*5, # 5 minutes
+            show_disabled=True,
+            timeout=60 * 5,  # 5 minutes
         )
-        await paginator.respond(interaction=ctx.interaction)
+        await paginator.send(msg.channel)
 
 
 def setup(bot):

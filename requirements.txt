@@ -1,11 +1,13 @@
-py-cord
+nextcord[speed]
 PyYAML
 aiohttp
+orjson
 rich
 SQLAlchemy
 binance-connector
 pymediawiki
 Pillow
+lxml
 colormath2
 aiofiles
 redis

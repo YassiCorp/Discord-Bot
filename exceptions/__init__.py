@@ -1,4 +1,5 @@
-from discord.ext.commands import CheckFailure
+from nextcord.ext.commands import CheckFailure
+
 
 class UserNotOwner(CheckFailure):
     """
