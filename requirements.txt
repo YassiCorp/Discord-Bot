@@ -11,3 +11,4 @@ lxml
 colormath2
 aiofiles
 redis
+humanfriendly

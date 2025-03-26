@@ -128,7 +128,7 @@ class Minecraft(commands.Cog, name="minecraft"):
         else: # Serveur offline
             embed = ErrorEmbed(
                 title=f"Serveur Minceraft",
-                description=f"Le serveur minecraft avec l'ip `{new_ip}`"
+                description=f"> Le serveur minecraft avec l'ip `{new_ip}`"
                             f"\n>  n'as pas donnée de réponse."
                             f"\n\n> -# **Veuillez vérifier l'ip ou ressayez plus tard**")
 

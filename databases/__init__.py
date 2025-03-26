@@ -1,10 +1,10 @@
-import os
 from sqlalchemy import create_engine
-from config import path
 from libs.file_api import create_file
+from libs.path import PATH_DB
+import os
 
 # ONLY DEV MODE
-databasePath = f"{path.PATH_DB}/database.db"
+databasePath = f"{PATH_DB}/database.db"
 
 def get_engine():
     if os.getenv("DEVMODE"):

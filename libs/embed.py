@@ -91,7 +91,7 @@ class ErrorEmbed(ModernEmbed):
         if code_style:
             self.description = f"```PYTHON\n {description} \n```"
         else:
-            self.description = f">>> {description}"
+            self.description = f"{description}"
 
         super().__init__(title=self.title, description=self.description, icon=self.icon, color=color)
 

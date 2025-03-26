@@ -264,7 +264,7 @@ class Fun(commands.Cog, name="fun"):
     # Commande Discord pour générer une couleur
     @nextcord.slash_command(
         name="guess_color",
-        description="Tu guess le code hex la couleur a l'image (Un jeu cree par un nerd, pour les nerds)",
+        description="Tu guess le code hex d'une couleur (Un jeu cree par un nerd, pour les nerds)",
         guild_ids=guilds,
     )
     async def guess_color(self, ctx: Interaction):

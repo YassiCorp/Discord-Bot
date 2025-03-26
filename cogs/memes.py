@@ -167,7 +167,7 @@ class Meme(commands.Cog, name="meme"):
 
         self.ERROR_NOTFOUND = ErrorEmbed(
             title=f"Meme",
-            description=f"L'id / le nom de la template est incorrecte !")
+            description=f"> L'id / le nom de la template est incorrecte !")
 
         self.ERROR_API = ErrorEmbed(
             title=f"Meme",
